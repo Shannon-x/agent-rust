@@ -13,9 +13,9 @@ pub mod proto {
 
 use clap::{Parser, Subcommand};
 use config::AgentConfig;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::info;
 
 #[derive(Parser)]
 #[command(name = "nezha-agent")]
@@ -51,7 +51,7 @@ enum Commands {
 fn default_config_path() -> PathBuf {
     if let Ok(exe) = std::env::current_exe() {
         exe.parent()
-            .unwrap_or(std::path::Path::new("."))
+            .unwrap_or(Path::new("."))
             .join("config.yml")
     } else {
         PathBuf::from("config.yml")
@@ -76,19 +76,8 @@ fn main() {
 
     match &cli.command {
         Some(Commands::Edit { config }) => {
-            let path = config
-                .clone()
-                .unwrap_or_else(default_config_path);
-
-            // Load existing config or create default
-            let agent_config = match AgentConfig::read(&path) {
-                Ok(c) => c,
-                Err(e) => {
-                    eprintln!("加载配置失败: {}", e);
-                    AgentConfig::default()
-                }
-            };
-
+            let path = config.clone().unwrap_or_else(default_config_path);
+            let agent_config = AgentConfig::read(&path).unwrap_or_default();
             println!("当前配置文件: {:?}", path);
             println!("Server: {}", agent_config.server);
             println!("UUID: {}", agent_config.uuid);
@@ -97,10 +86,7 @@ fn main() {
             println!("\n请手动编辑配置文件: {:?}", path);
         }
         Some(Commands::Service { action, config }) => {
-            let path = config
-                .clone()
-                .unwrap_or_else(default_config_path);
-
+            let path = config.clone().unwrap_or_else(default_config_path);
             handle_service_command(action, &path);
         }
         None => {
@@ -111,7 +97,6 @@ fn main() {
 }
 
 fn run_agent(config_path: PathBuf) {
-    // Load config
     let agent_config = match AgentConfig::read(&config_path) {
         Ok(c) => c,
         Err(e) => {
@@ -126,7 +111,6 @@ fn run_agent(config_path: PathBuf) {
 
     let config = Arc::new(agent_config);
 
-    // Build tokio runtime - use current_thread for minimal overhead
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -137,21 +121,14 @@ fn run_agent(config_path: PathBuf) {
     });
 }
 
-fn handle_service_command(action: &str, config_path: &PathBuf) {
+fn handle_service_command(action: &str, config_path: &Path) {
     let exe_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("nezha-agent"));
-    let exe_name = exe_path
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy();
-
-    let service_name = format!("{}", exe_name);
+    let exe_name = exe_path.file_name().unwrap_or_default().to_string_lossy();
     let config_flag = format!("-c {}", config_path.display());
 
     match action {
         "install" => {
-            println!("Installing service: {}", service_name);
-
-            // Create systemd service file
+            println!("Installing service: {}", exe_name);
             let service_content = format!(
                 r#"[Unit]
 Description=Nezha Agent (Rust)
@@ -169,64 +146,42 @@ WantedBy=multi-user.target
 "#,
                 exe_path.display(),
                 config_flag,
-                exe_path.parent().unwrap_or(std::path::Path::new("/opt")).display()
+                exe_path.parent().unwrap_or(Path::new("/opt")).display()
             );
 
-            let service_path = format!("/etc/systemd/system/{}.service", service_name);
+            let service_path = format!("/etc/systemd/system/{}.service", exe_name);
             match std::fs::write(&service_path, service_content) {
                 Ok(_) => {
                     println!("Service file written to {}", service_path);
-                    let _ = std::process::Command::new("systemctl")
-                        .args(["daemon-reload"])
-                        .status();
-                    let _ = std::process::Command::new("systemctl")
-                        .args(["enable", &service_name])
-                        .status();
-                    let _ = std::process::Command::new("systemctl")
-                        .args(["start", &service_name])
-                        .status();
+                    let _ = std::process::Command::new("systemctl").args(["daemon-reload"]).status();
+                    let _ = std::process::Command::new("systemctl").args(["enable", &exe_name]).status();
+                    let _ = std::process::Command::new("systemctl").args(["start", &exe_name]).status();
                     println!("Service installed and started");
                 }
-                Err(e) => {
-                    eprintln!("Failed to write service file: {}", e);
-                }
+                Err(e) => eprintln!("Failed to write service file: {}", e),
             }
         }
         "uninstall" => {
-            println!("Uninstalling service: {}", service_name);
-            let _ = std::process::Command::new("systemctl")
-                .args(["stop", &service_name])
-                .status();
-            let _ = std::process::Command::new("systemctl")
-                .args(["disable", &service_name])
-                .status();
-            let service_path = format!("/etc/systemd/system/{}.service", service_name);
+            println!("Uninstalling service: {}", exe_name);
+            let _ = std::process::Command::new("systemctl").args(["stop", &exe_name]).status();
+            let _ = std::process::Command::new("systemctl").args(["disable", &exe_name]).status();
+            let service_path = format!("/etc/systemd/system/{}.service", exe_name);
             let _ = std::fs::remove_file(&service_path);
-            let _ = std::process::Command::new("systemctl")
-                .args(["daemon-reload"])
-                .status();
+            let _ = std::process::Command::new("systemctl").args(["daemon-reload"]).status();
             println!("Service uninstalled");
         }
         "start" => {
-            let _ = std::process::Command::new("systemctl")
-                .args(["start", &service_name])
-                .status();
+            let _ = std::process::Command::new("systemctl").args(["start", &exe_name]).status();
             println!("Service started");
         }
         "stop" => {
-            let _ = std::process::Command::new("systemctl")
-                .args(["stop", &service_name])
-                .status();
+            let _ = std::process::Command::new("systemctl").args(["stop", &exe_name]).status();
             println!("Service stopped");
         }
         "restart" => {
-            let _ = std::process::Command::new("systemctl")
-                .args(["restart", &service_name])
-                .status();
+            let _ = std::process::Command::new("systemctl").args(["restart", &exe_name]).status();
             println!("Service restarted");
         }
-        _ => {
-            eprintln!("未知操作: {}. 支持: install/uninstall/start/stop/restart", action);
-        }
+        _ => eprintln!("未知操作: {}. 支持: install/uninstall/start/stop/restart", action),
     }
 }

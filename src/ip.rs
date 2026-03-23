@@ -1,10 +1,9 @@
 use crate::proto;
-use crate::util::{self, USER_AGENT};
 use std::net::IpAddr;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
-use tracing::{info, warn};
+use tracing::info;
 
 const CF_ENDPOINTS: &[&str] = &[
     "https://blog.cloudflare.com/cdn-cgi/trace",
@@ -13,6 +12,8 @@ const CF_ENDPOINTS: &[&str] = &[
     "https://ahrefs.com/cdn-cgi/trace",
 ];
 
+const USER_AGENT: &str = "nezha-agent/1.0";
+
 static GEO_QUERY_IP: Mutex<Option<String>> = Mutex::new(None);
 pub static GEO_QUERY_IP_CHANGED: AtomicBool = AtomicBool::new(true);
 static CACHED_COUNTRY_CODE: Mutex<Option<String>> = Mutex::new(None);
@@ -20,6 +21,7 @@ static RETRY_TIMES: AtomicI32 = AtomicI32::new(0);
 static FAILED_STARTED_AT: Mutex<Option<Instant>> = Mutex::new(None);
 static LATEST_RETRY_AT: Mutex<Option<Instant>> = Mutex::new(None);
 
+#[allow(dead_code)]
 pub fn get_cached_country_code() -> String {
     CACHED_COUNTRY_CODE
         .lock()
@@ -60,22 +62,21 @@ pub async fn fetch_ip(
         }
     }
 
-    let endpoints = if custom_endpoints.is_empty() {
-        CF_ENDPOINTS.iter().map(|s| s.to_string()).collect()
+    let endpoints: Vec<String> = if custom_endpoints.is_empty() {
+        CF_ENDPOINTS.iter().map(|s| (*s).to_string()).collect()
     } else {
         custom_endpoints.to_vec()
     };
 
     let endpoints_clone = endpoints.clone();
-    let (ipv4_handle, ipv6_handle) = tokio::join!(
+    let (ipv4_result, ipv6_result) = tokio::join!(
         fetch_single_ip(&endpoints, false),
         fetch_single_ip(&endpoints_clone, true),
     );
 
-    let ipv4 = ipv4_handle.unwrap_or_default();
-    let ipv6 = ipv6_handle.unwrap_or_default();
+    let ipv4 = ipv4_result.unwrap_or_default();
+    let ipv6 = ipv6_result.unwrap_or_default();
 
-    // Determine which IP to use for GeoIP query
     let query_ip = if !ipv6.is_empty() && (use_ipv6_country_code || ipv4.is_empty()) {
         ipv6.clone()
     } else if !ipv4.is_empty() {
@@ -99,7 +100,6 @@ pub async fn fetch_ip(
         });
     }
 
-    // Update retry state
     let now = Instant::now();
     let count = RETRY_TIMES.fetch_add(1, Ordering::Relaxed) + 1;
     *LATEST_RETRY_AT.lock().unwrap() = Some(now);
@@ -129,8 +129,7 @@ async fn fetch_single_ip(servers: &[String], is_v6: bool) -> Option<String> {
                 }
             }
             Err(e) => {
-                let err_str = e.to_string();
-                if err_str.contains("no route to host") {
+                if e.to_string().contains("no route to host") {
                     return None;
                 }
                 continue;
@@ -155,8 +154,7 @@ fn parse_ip_from_response(body: &str) -> String {
 fn validate_ip(ip_str: &str, is_v6: bool) -> Option<String> {
     let parsed: IpAddr = ip_str.parse().ok()?;
     match (is_v6, parsed) {
-        (true, IpAddr::V6(_)) => Some(ip_str.to_string()),
-        (false, IpAddr::V4(_)) => Some(ip_str.to_string()),
+        (true, IpAddr::V6(_)) | (false, IpAddr::V4(_)) => Some(ip_str.to_string()),
         _ => None,
     }
 }

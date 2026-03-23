@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
 use std::process::Command;
-use tracing::warn;
 
 const EXPECTED_FS_TYPES: &[&str] = &[
     "apfs", "ext4", "ext3", "ext2", "f2fs", "reiserfs", "jfs", "bcachefs", "btrfs",
@@ -18,11 +17,10 @@ pub fn get_total(allowlist: &[String]) -> u64 {
     let mut total: u64 = 0;
     for mount_path in devices.values() {
         if let Ok(stat) = nix::sys::statvfs::statvfs(mount_path.as_str()) {
-            total += stat.blocks() as u64 * stat.fragment_size() as u64;
+            total += stat.blocks() * stat.fragment_size();
         }
     }
 
-    // Fallback for OpenVZ-like systems
     if total == 0 {
         total = df_fallback_total();
     }
@@ -40,9 +38,9 @@ pub fn get_used(allowlist: &[String]) -> u64 {
     let mut used: u64 = 0;
     for mount_path in devices.values() {
         if let Ok(stat) = nix::sys::statvfs::statvfs(mount_path.as_str()) {
-            let total = stat.blocks() as u64 * stat.fragment_size() as u64;
-            let avail = stat.blocks_available() as u64 * stat.fragment_size() as u64;
-            used += total.saturating_sub(avail);
+            let total_bytes = stat.blocks() * stat.fragment_size();
+            let avail_bytes = stat.blocks_available() * stat.fragment_size();
+            used += total_bytes.saturating_sub(avail_bytes);
         }
     }
 
@@ -56,7 +54,6 @@ pub fn get_used(allowlist: &[String]) -> u64 {
 fn get_devices(allowlist: &[String]) -> anyhow::Result<HashMap<String, String>> {
     let mut devices = HashMap::new();
 
-    // Use allowlist if configured
     if !allowlist.is_empty() {
         for (i, v) in allowlist.iter().enumerate() {
             devices.insert(i.to_string(), v.clone());
@@ -64,7 +61,6 @@ fn get_devices(allowlist: &[String]) -> anyhow::Result<HashMap<String, String>> 
         return Ok(devices);
     }
 
-    // Parse /proc/mounts for partition discovery
     let mounts = fs::read_to_string("/proc/mounts")?;
     for line in mounts.lines() {
         let parts: Vec<&str> = line.split_whitespace().collect();
@@ -75,7 +71,6 @@ fn get_devices(allowlist: &[String]) -> anyhow::Result<HashMap<String, String>> 
         let mount_point = parts[1];
         let fs_type = parts[2].to_lowercase();
 
-        // Filter by expected filesystem types
         if EXPECTED_FS_TYPES.iter().any(|t| fs_type.contains(t))
             && !mount_point.contains("/var/lib/kubelet")
             && !devices.contains_key(device)

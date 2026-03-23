@@ -23,6 +23,7 @@ static CACHED_BOOT_TIME: AtomicU64 = AtomicU64::new(0);
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Collect host hardware information (static info, called infrequently)
+#[allow(clippy::field_reassign_with_default)]
 pub fn get_host(config: &AgentConfig) -> proto::Host {
     let mut host = proto::Host::default();
     host.version = VERSION.to_string();
@@ -70,6 +71,7 @@ pub fn get_host(config: &AgentConfig) -> proto::Host {
 
 /// Collect host state (dynamic metrics — called every report_delay seconds)
 /// PERF: Zero sysinfo dependency, all data from /proc directly
+#[allow(clippy::field_reassign_with_default)]
 pub fn get_state(config: &AgentConfig) -> proto::State {
     let mut state = proto::State::default();
 

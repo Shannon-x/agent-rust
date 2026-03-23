@@ -3,7 +3,7 @@ use crate::proto;
 use crate::util;
 use std::net::IpAddr;
 use std::time::Duration;
-use surge_ping::{Client, Config, PingIdentifier, PingSequence, ICMP};
+use surge_ping::{Client, Config, PingIdentifier, PingSequence};
 use tracing::info;
 
 pub async fn handle(task: &proto::Task, result: &mut proto::TaskResult, config: &AgentConfig) {
@@ -45,9 +45,8 @@ pub async fn handle(task: &proto::Task, result: &mut proto::TaskResult, config: 
 
     let mut total_rtt = Duration::ZERO;
     let mut success_count = 0u32;
-    let ping_count = 5;
 
-    for seq in 0..ping_count {
+    for seq in 0..5u16 {
         match pinger.ping(PingSequence(seq), &[]).await {
             Ok((_, rtt)) => {
                 total_rtt += rtt;

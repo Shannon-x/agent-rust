@@ -1,6 +1,5 @@
 use std::path::Path;
 use std::process::Command;
-use tracing::warn;
 
 /// GPU vendor detection
 enum GpuVendor {

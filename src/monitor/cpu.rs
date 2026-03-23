@@ -17,10 +17,8 @@ pub fn get_host_info() -> anyhow::Result<Vec<String>> {
         if let Some(model) = line.strip_prefix("model name\t: ") {
             current_model = model.trim().to_string();
         }
-        if line.starts_with("cpu cores\t:") || line.is_empty() {
-            if !current_model.is_empty() {
-                *model_counts.entry(current_model.clone()).or_insert(0) += 1;
-            }
+        if (line.starts_with("cpu cores\t:") || line.is_empty()) && !current_model.is_empty() {
+            *model_counts.entry(current_model.clone()).or_insert(0) += 1;
         }
     }
 

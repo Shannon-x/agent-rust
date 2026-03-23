@@ -27,6 +27,7 @@ pub const TASK_TYPE_REPORT_CONFIG: u64 = 12;
 pub const TASK_TYPE_APPLY_CONFIG: u64 = 13;
 
 /// Dispatch and execute a task, returning the result (if any)
+#[allow(clippy::field_reassign_with_default)]
 pub async fn do_task(
     task: &proto::Task,
     config: &AgentConfig,

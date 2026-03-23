@@ -47,7 +47,6 @@ portable-pty = "0.8"
 
 # Utilities
 nix = { version = "0.29", features = ["signal", "process", "fs"] }
-md-5 = "0.10"
 rand = "0.9"
 
 # Aho-Corasick for NIC filtering
