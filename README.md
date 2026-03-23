@@ -1,23 +1,78 @@
-# Nezha Agent
-  
-Agent of Nezha Monitoring
+# 哪吒监控 Agent (Rust 高性能版)
 
-## Contributors
+[![CI](https://github.com/Shannon-x/agent-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/Shannon-x/agent-rust/actions)
 
-<!--GAMFC_DELIMITER--><a href="https://github.com/naiba" title="naiba"><img src="https://avatars.githubusercontent.com/u/29243953?v=4" width="50;" alt="naiba"/></a>
-<a href="https://github.com/uubulb" title="UUBulb"><img src="https://avatars.githubusercontent.com/u/35923940?v=4" width="50;" alt="UUBulb"/></a>
-<a href="https://github.com/funnyzak" title="Leon"><img src="https://avatars.githubusercontent.com/u/2562087?v=4" width="50;" alt="Leon"/></a>
-<a href="https://github.com/zhangnew" title="zhangnew"><img src="https://avatars.githubusercontent.com/u/9146834?v=4" width="50;" alt="zhangnew"/></a>
-<a href="https://github.com/AEnjoy" title="AEnjoy"><img src="https://avatars.githubusercontent.com/u/37976919?v=4" width="50;" alt="AEnjoy"/></a>
-<a href="https://github.com/wwng2333" title=":D"><img src="https://avatars.githubusercontent.com/u/17147265?v=4" width="50;" alt=":D"/></a>
-<a href="https://github.com/DarcJC" title="Darc Z."><img src="https://avatars.githubusercontent.com/u/53445798?v=4" width="50;" alt="Darc Z."/></a>
-<a href="https://github.com/geniucker-dev" title="Geniucker Zhu"><img src="https://avatars.githubusercontent.com/u/165345526?v=4" width="50;" alt="Geniucker Zhu"/></a>
-<a href="https://github.com/ChrisKimZHT" title="Haotian Zou"><img src="https://avatars.githubusercontent.com/u/49368462?v=4" width="50;" alt="Haotian Zou"/></a>
-<a href="https://github.com/yuanweize" title="IYUANWEIZE"><img src="https://avatars.githubusercontent.com/u/30067203?v=4" width="50;" alt="IYUANWEIZE"/></a>
-<a href="https://github.com/NewbieOrange" title="NewbieOrange"><img src="https://avatars.githubusercontent.com/u/7200314?v=4" width="50;" alt="NewbieOrange"/></a>
-<a href="https://github.com/elysia-best" title="Yinan Qin"><img src="https://avatars.githubusercontent.com/u/39023210?v=4" width="50;" alt="Yinan Qin"/></a>
-<a href="https://github.com/xream" title="xream"><img src="https://avatars.githubusercontent.com/u/1210282?v=4" width="50;" alt="xream"/></a>
-<a href="https://github.com/xykt" title="xykt"><img src="https://avatars.githubusercontent.com/u/152045469?v=4" width="50;" alt="xykt"/></a>
-<a href="https://github.com/matchch" title="卖女孩的小火柴"><img src="https://avatars.githubusercontent.com/u/44471469?v=4" width="50;" alt="卖女孩的小火柴"/></a>
-<a href="https://github.com/liuran001" title="baka"><img src="https://avatars.githubusercontent.com/u/32791471?v=4" width="50;" alt="baka"/></a>
-<a href="https://github.com/akiasprin" title="葉鲜森(KEVI_)"><img src="https://avatars.githubusercontent.com/u/25278728?v=4" width="50;" alt="葉鲜森(KEVI_)"/></a><!--GAMFC_DELIMITER_END-->
+使用 Rust 重写的哪吒监控 Agent，实现高性能、低资源占用。
+
+## 特性
+
+- 🚀 **高性能**: 直接读取 `/proc`、`/sys`，零 GC 开销
+- 📦 **极小体积**: Release 二进制仅 ~4MB (stripped + LTO)
+- 🔌 **完全兼容**: 与哪吒面板 gRPC 协议完全兼容
+- 🖥️ **系统监控**: CPU、内存、磁盘、网络、负载、温度、GPU、连接数
+- 📡 **GeoIP 上报**: 支持 IPv4/IPv6 双栈 IP 获取与国家码上报
+- ⚡ **任务执行**: HTTP GET、ICMP/TCP Ping、命令执行、配置管理
+- 🔧 **服务管理**: systemd 服务安装/卸载/启动/停止/重启
+
+## 构建
+
+```bash
+# 安装依赖
+apt install protobuf-compiler
+
+# 构建 Release
+cargo build --release
+
+# 生成的二进制在 target/release/nezha-agent
+```
+
+## 使用
+
+```bash
+# 运行代理
+./nezha-agent -c config.yml
+
+# 查看帮助
+./nezha-agent --help
+
+# 安装为 systemd 服务
+./nezha-agent service install -c /etc/nezha/config.yml
+
+# 管理服务
+./nezha-agent service start|stop|restart|uninstall
+```
+
+## 配置文件
+
+```yaml
+server: "dashboard.example.com:8008"
+client_secret: "your-secret"
+tls: false
+debug: false
+report_delay: 3
+temperature: true
+gpu: false
+```
+
+也支持 `NZ_` 前缀环境变量覆盖，例如：
+```bash
+NZ_SERVER="dashboard.example.com:8008" NZ_CLIENT_SECRET="secret" ./nezha-agent
+```
+
+## 交叉编译
+
+支持的目标平台：
+- `x86_64-unknown-linux-gnu`
+- `aarch64-unknown-linux-gnu`
+- `x86_64-unknown-linux-musl`
+- `aarch64-unknown-linux-musl`
+
+```bash
+# 使用 cross 工具
+cargo install cross
+cross build --release --target aarch64-unknown-linux-gnu
+```
+
+## License
+
+Apache-2.0

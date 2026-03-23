@@ -1,8 +1,8 @@
-.DS_Store
-/agent
-/cmd/agent/agent
-/cmd/agent/config.yml
-*.pprof
-dist
-/model/zconfig.go
-nezha-agent-linux
+/target/
+Cargo.lock
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+config.yml
