@@ -50,9 +50,7 @@ enum Commands {
 
 fn default_config_path() -> PathBuf {
     if let Ok(exe) = std::env::current_exe() {
-        exe.parent()
-            .unwrap_or(Path::new("."))
-            .join("config.yml")
+        exe.parent().unwrap_or(Path::new(".")).join("config.yml")
     } else {
         PathBuf::from("config.yml")
     }
@@ -153,9 +151,15 @@ WantedBy=multi-user.target
             match std::fs::write(&service_path, service_content) {
                 Ok(_) => {
                     println!("Service file written to {}", service_path);
-                    let _ = std::process::Command::new("systemctl").args(["daemon-reload"]).status();
-                    let _ = std::process::Command::new("systemctl").args(["enable", &exe_name]).status();
-                    let _ = std::process::Command::new("systemctl").args(["start", &exe_name]).status();
+                    let _ = std::process::Command::new("systemctl")
+                        .args(["daemon-reload"])
+                        .status();
+                    let _ = std::process::Command::new("systemctl")
+                        .args(["enable", &exe_name])
+                        .status();
+                    let _ = std::process::Command::new("systemctl")
+                        .args(["start", &exe_name])
+                        .status();
                     println!("Service installed and started");
                 }
                 Err(e) => eprintln!("Failed to write service file: {}", e),
@@ -163,25 +167,40 @@ WantedBy=multi-user.target
         }
         "uninstall" => {
             println!("Uninstalling service: {}", exe_name);
-            let _ = std::process::Command::new("systemctl").args(["stop", &exe_name]).status();
-            let _ = std::process::Command::new("systemctl").args(["disable", &exe_name]).status();
+            let _ = std::process::Command::new("systemctl")
+                .args(["stop", &exe_name])
+                .status();
+            let _ = std::process::Command::new("systemctl")
+                .args(["disable", &exe_name])
+                .status();
             let service_path = format!("/etc/systemd/system/{}.service", exe_name);
             let _ = std::fs::remove_file(&service_path);
-            let _ = std::process::Command::new("systemctl").args(["daemon-reload"]).status();
+            let _ = std::process::Command::new("systemctl")
+                .args(["daemon-reload"])
+                .status();
             println!("Service uninstalled");
         }
         "start" => {
-            let _ = std::process::Command::new("systemctl").args(["start", &exe_name]).status();
+            let _ = std::process::Command::new("systemctl")
+                .args(["start", &exe_name])
+                .status();
             println!("Service started");
         }
         "stop" => {
-            let _ = std::process::Command::new("systemctl").args(["stop", &exe_name]).status();
+            let _ = std::process::Command::new("systemctl")
+                .args(["stop", &exe_name])
+                .status();
             println!("Service stopped");
         }
         "restart" => {
-            let _ = std::process::Command::new("systemctl").args(["restart", &exe_name]).status();
+            let _ = std::process::Command::new("systemctl")
+                .args(["restart", &exe_name])
+                .status();
             println!("Service restarted");
         }
-        _ => eprintln!("未知操作: {}. 支持: install/uninstall/start/stop/restart", action),
+        _ => eprintln!(
+            "未知操作: {}. 支持: install/uninstall/start/stop/restart",
+            action
+        ),
     }
 }

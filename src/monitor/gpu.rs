@@ -58,7 +58,10 @@ fn nvidia_model() -> anyhow::Result<Vec<String>> {
 
 fn nvidia_usage() -> anyhow::Result<Vec<f64>> {
     let output = Command::new("nvidia-smi")
-        .args(["--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"])
+        .args([
+            "--query-gpu=utilization.gpu",
+            "--format=csv,noheader,nounits",
+        ])
         .output()?;
     if !output.status.success() {
         anyhow::bail!("nvidia-smi failed");

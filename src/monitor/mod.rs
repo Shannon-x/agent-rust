@@ -175,8 +175,14 @@ pub fn track_network_speed(nic_allowlist: &std::collections::HashMap<String, boo
         let prev_in = NET_IN_TRANSFER.load(Ordering::Relaxed);
         let prev_out = NET_OUT_TRANSFER.load(Ordering::Relaxed);
         if prev_in > 0 {
-            NET_IN_SPEED.store(in_transfer.saturating_sub(prev_in) / diff, Ordering::Relaxed);
-            NET_OUT_SPEED.store(out_transfer.saturating_sub(prev_out) / diff, Ordering::Relaxed);
+            NET_IN_SPEED.store(
+                in_transfer.saturating_sub(prev_in) / diff,
+                Ordering::Relaxed,
+            );
+            NET_OUT_SPEED.store(
+                out_transfer.saturating_sub(prev_out) / diff,
+                Ordering::Relaxed,
+            );
         }
     }
 

@@ -87,7 +87,8 @@ pub async fn fetch_ip(
 
     if !query_ip.is_empty() {
         let mut geo = GEO_QUERY_IP.lock().unwrap();
-        let changed = geo.as_deref() != Some(&query_ip) || GEO_QUERY_IP_CHANGED.load(Ordering::Relaxed);
+        let changed =
+            geo.as_deref() != Some(&query_ip) || GEO_QUERY_IP_CHANGED.load(Ordering::Relaxed);
         GEO_QUERY_IP_CHANGED.store(changed, Ordering::Relaxed);
         *geo = Some(query_ip);
 

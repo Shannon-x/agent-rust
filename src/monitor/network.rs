@@ -4,12 +4,22 @@ use std::fs;
 use std::sync::LazyLock;
 
 const EXCLUDE_INTERFACES: &[&str] = &[
-    "lo", "tun", "docker", "veth", "br-", "vmbr", "vnet", "kube", "Meta", "tailscale", "fw", "tap",
+    "lo",
+    "tun",
+    "docker",
+    "veth",
+    "br-",
+    "vmbr",
+    "vnet",
+    "kube",
+    "Meta",
+    "tailscale",
+    "fw",
+    "tap",
 ];
 
-static INTERFACE_MATCHER: LazyLock<AhoCorasick> = LazyLock::new(|| {
-    AhoCorasick::new(EXCLUDE_INTERFACES).unwrap()
-});
+static INTERFACE_MATCHER: LazyLock<AhoCorasick> =
+    LazyLock::new(|| AhoCorasick::new(EXCLUDE_INTERFACES).unwrap());
 
 /// Get network traffic from /proc/net/dev
 pub fn get_traffic(allowlist: &HashMap<String, bool>) -> anyhow::Result<(u64, u64)> {
@@ -27,7 +37,9 @@ pub fn get_traffic(allowlist: &HashMap<String, bool>) -> anyhow::Result<(u64, u6
         let iface = parts[0].trim_end_matches(':');
 
         // Apply filtering
-        if INTERFACE_MATCHER.is_match(iface.as_bytes()) && !allowlist.get(iface).copied().unwrap_or(false) {
+        if INTERFACE_MATCHER.is_match(iface.as_bytes())
+            && !allowlist.get(iface).copied().unwrap_or(false)
+        {
             continue;
         }
         if !allowlist.is_empty() && !allowlist.get(iface).copied().unwrap_or(false) {

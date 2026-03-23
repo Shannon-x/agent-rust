@@ -78,7 +78,10 @@ struct CpuStat {
 
 fn read_cpu_stat() -> anyhow::Result<CpuStat> {
     let content = fs::read_to_string("/proc/stat")?;
-    let first_line = content.lines().next().ok_or_else(|| anyhow::anyhow!("empty /proc/stat"))?;
+    let first_line = content
+        .lines()
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("empty /proc/stat"))?;
 
     let parts: Vec<u64> = first_line
         .split_whitespace()

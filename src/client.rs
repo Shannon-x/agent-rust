@@ -40,10 +40,7 @@ pub async fn run(config: Arc<AgentConfig>) {
         };
 
         // Create authenticated client
-        let interceptor = AuthInterceptor::new(
-            config.client_secret.clone(),
-            config.uuid.clone(),
-        );
+        let interceptor = AuthInterceptor::new(config.client_secret.clone(), config.uuid.clone());
         let mut client: AuthedClient = NezhaServiceClient::with_interceptor(channel, interceptor);
 
         info!("Connection to {} established", config.server);
