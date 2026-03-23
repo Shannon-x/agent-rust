@@ -3,7 +3,7 @@
 # 安装: curl -sL https://raw.githubusercontent.com/Shannon-x/agent-rust/main/install.sh | sudo sh
 # 指定操作: curl -sL ... | sudo sh -s -- install --server <地址> --secret <密钥>
 
-set -eu
+set -u
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -22,7 +22,12 @@ log()  { printf "${GREEN}[✓]${NC} %s\n" "$*"; }
 warn() { printf "${YELLOW}[!]${NC} %s\n" "$*"; }
 err()  { printf "${RED}[✗]${NC} %s\n" "$*" >&2; }
 
-# ─── 架构检测 ────────────────────────────────────────────
+# 从 /dev/tty 读取用户输入 (兼容 curl|sh 管道模式)
+ask() {
+    printf "%s" "$1"
+    read -r REPLY </dev/tty || { err "无法读取输入 (请使用: sudo sh -c \"\$(curl -sL URL)\")"; exit 1; }
+}
+
 detect_arch() {
     arch=$(uname -m)
     case "$arch" in
@@ -36,13 +41,11 @@ detect_arch() {
     esac
 }
 
-# ─── 获取最新版本 ─────────────────────────────────────────
 get_latest_version() {
     curl -sL "https://api.github.com/repos/${REPO}/releases/latest" \
         | grep '"tag_name"' | head -1 | cut -d'"' -f4
 }
 
-# ─── 下载二进制 ───────────────────────────────────────────
 download_binary() {
     _version="$1"
     _arch="$2"
@@ -59,7 +62,6 @@ download_binary() {
 
     mkdir -p "${INSTALL_DIR}"
 
-    # 解压 - 兼容无 unzip 的系统
     if command -v unzip >/dev/null 2>&1; then
         unzip -o "${_tmp}" -d "${INSTALL_DIR}" >/dev/null 2>&1
     elif command -v busybox >/dev/null 2>&1; then
@@ -67,7 +69,7 @@ download_binary() {
     elif command -v python3 >/dev/null 2>&1; then
         python3 -c "import zipfile,sys; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "${_tmp}" "${INSTALL_DIR}"
     else
-        err "未找到 unzip 命令，请安装: apt install unzip 或 apk add unzip"
+        err "未找到 unzip，请安装: apt install unzip 或 apk add unzip"
         rm -f "${_tmp}"
         exit 1
     fi
@@ -77,7 +79,6 @@ download_binary() {
     log "二进制已安装到 ${INSTALL_DIR}/${AGENT_NAME}"
 }
 
-# ─── 生成 UUID ────────────────────────────────────────────
 gen_uuid() {
     if [ -f /proc/sys/kernel/random/uuid ]; then
         cat /proc/sys/kernel/random/uuid
@@ -86,12 +87,10 @@ gen_uuid() {
     elif command -v python3 >/dev/null 2>&1; then
         python3 -c "import uuid; print(uuid.uuid4())"
     else
-        # fallback: random hex
         head -c 16 /dev/urandom 2>/dev/null | od -A n -t x1 | tr -d ' \n' | sed 's/\(.\{8\}\)\(.\{4\}\)\(.\{4\}\)\(.\{4\}\)\(.\{12\}\)/\1-\2-\3-\4-\5/'
     fi
 }
 
-# ─── 创建服务 (systemd / openrc) ──────────────────────────
 install_service() {
     if command -v systemctl >/dev/null 2>&1; then
         cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<EOF
@@ -115,7 +114,6 @@ EOF
         systemctl enable "${SERVICE_NAME}" >/dev/null 2>&1
         systemctl start "${SERVICE_NAME}"
     elif command -v rc-service >/dev/null 2>&1; then
-        # OpenRC (Alpine)
         cat > "/etc/init.d/${SERVICE_NAME}" <<EOF
 #!/sbin/openrc-run
 name="${SERVICE_NAME}"
@@ -136,7 +134,6 @@ EOF
     fi
 }
 
-# ─── 停止服务 ─────────────────────────────────────────────
 stop_service() {
     if command -v systemctl >/dev/null 2>&1; then
         systemctl stop "${SERVICE_NAME}" 2>/dev/null || true
@@ -145,7 +142,6 @@ stop_service() {
     fi
 }
 
-# ─── 检查服务状态 ──────────────────────────────────────────
 is_service_active() {
     if command -v systemctl >/dev/null 2>&1; then
         systemctl is-active --quiet "${SERVICE_NAME}" 2>/dev/null
@@ -173,13 +169,13 @@ do_install() {
     done
 
     if [ -z "$_server" ]; then
-        printf "${CYAN}请输入面板 gRPC 地址 [如 panel.example.com:8008]: ${NC}"
-        read -r _server
+        ask "$(printf "${CYAN}请输入面板 gRPC 地址 [如 panel.example.com:8008]: ${NC}")"
+        _server="$REPLY"
         [ -z "$_server" ] && { err "面板地址不能为空"; exit 1; }
     fi
     if [ -z "$_secret" ]; then
-        printf "${CYAN}请输入客户端密钥 (Client Secret): ${NC}"
-        read -r _secret
+        ask "$(printf "${CYAN}请输入客户端密钥 (Client Secret): ${NC}")"
+        _secret="$REPLY"
         [ -z "$_secret" ] && { err "客户端密钥不能为空"; exit 1; }
     fi
 
@@ -246,7 +242,7 @@ do_update() {
     _version=$(get_latest_version)
     [ -z "$_version" ] && { err "无法获取最新版本"; exit 1; }
 
-    _cur=$("${INSTALL_DIR}/${AGENT_NAME}" --version 2>/dev/null | awk '{print $2}' || echo "unknown")
+    _cur=$("${INSTALL_DIR}/${AGENT_NAME}" --version 2>/dev/null | awk '{print $2}') || _cur="unknown"
     log "当前版本: ${_cur}"
     log "最新版本: ${_version}"
 
@@ -283,9 +279,8 @@ do_uninstall() {
     printf "${YELLOW}即将卸载 Nezha Agent:${NC}\n"
     printf "  - 停止并删除服务\n"
     printf "  - 删除 %s\n\n" "$INSTALL_DIR"
-    printf "${RED}确认卸载? [y/N]: ${NC}"
-    read -r confirm
-    case "$confirm" in
+    ask "$(printf "${RED}确认卸载? [y/N]: ${NC}")"
+    case "$REPLY" in
         y|Y) ;;
         *)   log "已取消"; return ;;
     esac
@@ -309,7 +304,6 @@ do_uninstall() {
     printf "${GREEN}╚═══════════════════════════════════════════════╝${NC}\n\n"
 }
 
-# ─── 管理命令提示 ──────────────────────────────────────────
 show_management_commands() {
     if command -v systemctl >/dev/null 2>&1; then
         printf "  ${YELLOW}管理命令:${NC}\n"
@@ -328,7 +322,7 @@ show_menu() {
     printf "${CYAN}╚═══════════════════════════════════════════════╝${NC}\n\n"
 
     if [ -f "${INSTALL_DIR}/${AGENT_NAME}" ]; then
-        _ver=$("${INSTALL_DIR}/${AGENT_NAME}" --version 2>/dev/null | awk '{print $2}' || echo "?")
+        _ver=$("${INSTALL_DIR}/${AGENT_NAME}" --version 2>/dev/null | awk '{print $2}') || _ver="?"
         if is_service_active; then
             _st="运行中"
         else
@@ -344,10 +338,9 @@ show_menu() {
     printf "  ${BOLD}2)${NC} 更新到最新版\n"
     printf "  ${BOLD}3)${NC} 卸载\n"
     printf "  ${BOLD}0)${NC} 退出\n\n"
-    printf "${CYAN}请选择操作 [0-3]: ${NC}"
-    read -r choice
+    ask "$(printf "${CYAN}请选择操作 [0-3]: ${NC}")"
 
-    case "$choice" in
+    case "$REPLY" in
         1) do_install ;;
         2) do_update ;;
         3) do_uninstall ;;
@@ -371,5 +364,5 @@ case "$ACTION" in
     update)     do_update ;;
     uninstall)  do_uninstall ;;
     "")         show_menu ;;
-    *)          err "未知操作: $ACTION"; printf "用法: %s {install|update|uninstall}\n" "$0"; exit 1 ;;
+    *)          err "未知操作: $ACTION"; printf "用法: install|update|uninstall\n"; exit 1 ;;
 esac
