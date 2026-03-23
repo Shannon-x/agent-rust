@@ -23,6 +23,7 @@ const EXPECTED_FS_TYPES: &[&str] = &[
 ];
 
 /// Get total disk space
+#[allow(clippy::unnecessary_cast)]
 pub fn get_total(allowlist: &[String]) -> u64 {
     let devices = match get_devices(allowlist) {
         Ok(d) => d,
@@ -32,7 +33,7 @@ pub fn get_total(allowlist: &[String]) -> u64 {
     let mut total: u64 = 0;
     for mount_path in devices.values() {
         if let Ok(stat) = nix::sys::statvfs::statvfs(mount_path.as_str()) {
-            total += stat.blocks() * stat.fragment_size();
+            total += stat.blocks() as u64 * stat.fragment_size() as u64;
         }
     }
 
@@ -44,6 +45,7 @@ pub fn get_total(allowlist: &[String]) -> u64 {
 }
 
 /// Get used disk space
+#[allow(clippy::unnecessary_cast)]
 pub fn get_used(allowlist: &[String]) -> u64 {
     let devices = match get_devices(allowlist) {
         Ok(d) => d,
@@ -53,8 +55,8 @@ pub fn get_used(allowlist: &[String]) -> u64 {
     let mut used: u64 = 0;
     for mount_path in devices.values() {
         if let Ok(stat) = nix::sys::statvfs::statvfs(mount_path.as_str()) {
-            let total_bytes = stat.blocks() * stat.fragment_size();
-            let avail_bytes = stat.blocks_available() * stat.fragment_size();
+            let total_bytes = stat.blocks() as u64 * stat.fragment_size() as u64;
+            let avail_bytes = stat.blocks_available() as u64 * stat.fragment_size() as u64;
             used += total_bytes.saturating_sub(avail_bytes);
         }
     }
