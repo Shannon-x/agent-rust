@@ -17,7 +17,7 @@
 ### 交互式安装 (推荐)
 
 ```bash
-curl -sL https://raw.githubusercontent.com/Shannon-x/agent-rust/main/install.sh | sudo bash
+curl -sL https://raw.githubusercontent.com/Shannon-x/agent-rust/main/install.sh | sudo sh
 ```
 
 运行后会显示菜单，选择 **1) 安装**，按提示输入面板地址和密钥即可。UUID 自动生成。
@@ -25,7 +25,7 @@ curl -sL https://raw.githubusercontent.com/Shannon-x/agent-rust/main/install.sh 
 ### 命令行直接安装
 
 ```bash
-curl -sL https://raw.githubusercontent.com/Shannon-x/agent-rust/main/install.sh | sudo bash -s -- install \
+curl -sL https://raw.githubusercontent.com/Shannon-x/agent-rust/main/install.sh | sudo sh -s -- install \
   --server panel.example.com:8008 \
   --secret YOUR_CLIENT_SECRET \
   --tls
@@ -34,13 +34,13 @@ curl -sL https://raw.githubusercontent.com/Shannon-x/agent-rust/main/install.sh 
 ### 更新到最新版
 
 ```bash
-curl -sL https://raw.githubusercontent.com/Shannon-x/agent-rust/main/install.sh | sudo bash -s -- update
+curl -sL https://raw.githubusercontent.com/Shannon-x/agent-rust/main/install.sh | sudo sh -s -- update
 ```
 
 ### 卸载
 
 ```bash
-curl -sL https://raw.githubusercontent.com/Shannon-x/agent-rust/main/install.sh | sudo bash -s -- uninstall
+curl -sL https://raw.githubusercontent.com/Shannon-x/agent-rust/main/install.sh | sudo sh -s -- uninstall
 ```
 
 ### 安装参数
