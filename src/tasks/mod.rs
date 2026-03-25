@@ -7,9 +7,9 @@ pub mod nat;
 pub mod tcp_ping;
 pub mod terminal;
 
+use crate::client::AuthedClient;
 use crate::config::AgentConfig;
 use crate::proto;
-use crate::client::AuthedClient;
 use tracing::warn;
 
 /// Task type constants matching Go's iota
@@ -29,7 +29,11 @@ pub const TASK_TYPE_APPLY_CONFIG: u64 = 13;
 
 /// Dispatch and execute a task, returning the result (if any)
 #[allow(clippy::field_reassign_with_default)]
-pub async fn do_task(task: &proto::Task, config: &AgentConfig, client: AuthedClient) -> Option<proto::TaskResult> {
+pub async fn do_task(
+    task: &proto::Task,
+    config: &AgentConfig,
+    client: AuthedClient,
+) -> Option<proto::TaskResult> {
     let mut result = proto::TaskResult {
         id: task.id,
         r#type: task.r#type,

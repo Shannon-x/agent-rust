@@ -16,11 +16,7 @@ struct TerminalTask {
     stream_id: String,
 }
 
-pub async fn handle(
-    task: &proto::Task,
-    config: &AgentConfig,
-    mut client: AuthedClient,
-) {
+pub async fn handle(task: &proto::Task, config: &AgentConfig, mut client: AuthedClient) {
     if config.disable_command_execute {
         warn!("此 Agent 已禁止命令执行 (Web终端被拒绝)");
         return;
@@ -87,7 +83,11 @@ pub async fn handle(
     // The first packet must be the Magic Bytes + StreamID
     let mut magic_header = vec![0xff, 0x05, 0xff, 0x05];
     magic_header.extend_from_slice(terminal.stream_id.as_bytes());
-    if tx.send(proto::IoStreamData { data: magic_header }).await.is_err() {
+    if tx
+        .send(proto::IoStreamData { data: magic_header })
+        .await
+        .is_err()
+    {
         error!("Failed to send terminal magic header");
         return;
     }
@@ -123,7 +123,7 @@ pub async fn handle(
 
     let stream_id = terminal.stream_id.clone();
     let tx_clone = tx.clone();
-    
+
     // Spawn a task to read from PTY and send to gRPC
     let pty_to_grpc = tokio::spawn(async move {
         // Since we got a std::sync::mpsc::Receiver from the blocking task, we poll it in a loop
@@ -151,7 +151,11 @@ pub async fn handle(
         let mut interval = tokio::time::interval(Duration::from_secs(30));
         loop {
             interval.tick().await;
-            if tx_keepalive.send(proto::IoStreamData { data: vec![] }).await.is_err() {
+            if tx_keepalive
+                .send(proto::IoStreamData { data: vec![] })
+                .await
+                .is_err()
+            {
                 break;
             }
         }

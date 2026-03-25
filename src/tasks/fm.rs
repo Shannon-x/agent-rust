@@ -31,11 +31,7 @@ struct FmAction {
     size: Option<u64>,
 }
 
-pub async fn handle(
-    task: &proto::Task,
-    config: &AgentConfig,
-    mut client: AuthedClient,
-) {
+pub async fn handle(task: &proto::Task, config: &AgentConfig, mut client: AuthedClient) {
     if config.disable_command_execute {
         warn!("此 Agent 已禁止命令执行 (文件管理被拒绝)");
         return;
@@ -68,7 +64,11 @@ pub async fn handle(
     // The first packet must be the Magic Bytes + StreamID
     let mut magic_header = vec![0xff, 0x05, 0xff, 0x05];
     magic_header.extend_from_slice(fm_task.stream_id.as_bytes());
-    if tx.send(proto::IoStreamData { data: magic_header }).await.is_err() {
+    if tx
+        .send(proto::IoStreamData { data: magic_header })
+        .await
+        .is_err()
+    {
         error!("Failed to send FM magic header");
         return;
     }
@@ -79,7 +79,11 @@ pub async fn handle(
         let mut interval = tokio::time::interval(Duration::from_secs(30));
         loop {
             interval.tick().await;
-            if tx_keepalive.send(proto::IoStreamData { data: vec![] }).await.is_err() {
+            if tx_keepalive
+                .send(proto::IoStreamData { data: vec![] })
+                .await
+                .is_err()
+            {
                 break;
             }
         }
@@ -96,14 +100,18 @@ pub async fn handle(
                         // Heartbeat
                         continue;
                     }
-                    
+
                     // The incoming data is a JSON string of FmAction
                     let json_str = String::from_utf8_lossy(&msg.data);
-                    
+
                     let action: FmAction = match serde_json::from_str(&json_str) {
                         Ok(a) => a,
                         Err(e) => {
-                            let _ = tx_main.send(proto::IoStreamData { data: fm_proto::create_error(&format!("Invalid JSON: {}", e)) }).await;
+                            let _ = tx_main
+                                .send(proto::IoStreamData {
+                                    data: fm_proto::create_error(&format!("Invalid JSON: {}", e)),
+                                })
+                                .await;
                             continue;
                         }
                     };
@@ -148,10 +156,18 @@ pub async fn handle(
                             }
                         }
                         "chown" => {
-                            let _ = tx_main.send(proto::IoStreamData { data: fm_proto::create_error("chown not fully implemented yet") }).await;
+                            let _ = tx_main
+                                .send(proto::IoStreamData {
+                                    data: fm_proto::create_error("chown not fully implemented yet"),
+                                })
+                                .await;
                         }
                         _ => {
-                            let _ = tx_main.send(proto::IoStreamData { data: fm_proto::create_error("Unknown action") }).await;
+                            let _ = tx_main
+                                .send(proto::IoStreamData {
+                                    data: fm_proto::create_error("Unknown action"),
+                                })
+                                .await;
                         }
                     }
                 }
@@ -182,7 +198,11 @@ async fn handle_list(target: &Path, original_path: String, tx: &mpsc::Sender<pro
     let mut dir = match fs::read_dir(target).await {
         Ok(d) => d,
         Err(e) => {
-            let _ = tx.send(proto::IoStreamData { data: fm_proto::create_error(&e.to_string()) }).await;
+            let _ = tx
+                .send(proto::IoStreamData {
+                    data: fm_proto::create_error(&e.to_string()),
+                })
+                .await;
             return;
         }
     };
@@ -194,30 +214,38 @@ async fn handle_list(target: &Path, original_path: String, tx: &mpsc::Sender<pro
             fm_proto::append_filename(&mut buf, &name, metadata.is_dir());
         }
     }
-    
+
     let _ = tx.send(proto::IoStreamData { data: buf }).await;
-    let _ = tx.send(proto::IoStreamData { data: fm_proto::COMPLETE_IDENTIFIER.to_vec() }).await;
+    let _ = tx
+        .send(proto::IoStreamData {
+            data: fm_proto::COMPLETE_IDENTIFIER.to_vec(),
+        })
+        .await;
 }
 
 async fn handle_read(target: &Path, tx: &mpsc::Sender<proto::IoStreamData>) {
     let mut file = match fs::File::open(target).await {
         Ok(f) => f,
         Err(e) => {
-            let _ = tx.send(proto::IoStreamData { data: fm_proto::create_error(&e.to_string()) }).await;
+            let _ = tx
+                .send(proto::IoStreamData {
+                    data: fm_proto::create_error(&e.to_string()),
+                })
+                .await;
             return;
         }
     };
-    
+
     let size = match file.metadata().await {
         Ok(m) => m.len(),
         Err(_) => 0,
     };
-    
+
     let header = fm_proto::create_file_header(size);
     if tx.send(proto::IoStreamData { data: header }).await.is_err() {
         return;
     }
-    
+
     let mut buf = vec![0u8; 64 * 1024]; // 64KB chunks
     loop {
         match file.read(&mut buf).await {
@@ -230,13 +258,21 @@ async fn handle_read(target: &Path, tx: &mpsc::Sender<proto::IoStreamData>) {
                 }
             }
             Err(e) => {
-                let _ = tx.send(proto::IoStreamData { data: fm_proto::create_error(&e.to_string()) }).await;
+                let _ = tx
+                    .send(proto::IoStreamData {
+                        data: fm_proto::create_error(&e.to_string()),
+                    })
+                    .await;
                 break;
             }
         }
     }
     // send end of stream packet
-    let _ = tx.send(proto::IoStreamData { data: fm_proto::COMPLETE_IDENTIFIER.to_vec() }).await;
+    let _ = tx
+        .send(proto::IoStreamData {
+            data: fm_proto::COMPLETE_IDENTIFIER.to_vec(),
+        })
+        .await;
 }
 
 async fn handle_write(
@@ -248,11 +284,15 @@ async fn handle_write(
     let mut file = match fs::File::create(target).await {
         Ok(f) => f,
         Err(e) => {
-            let _ = tx.send(proto::IoStreamData { data: fm_proto::create_error(&e.to_string()) }).await;
+            let _ = tx
+                .send(proto::IoStreamData {
+                    data: fm_proto::create_error(&e.to_string()),
+                })
+                .await;
             return;
         }
     };
-    
+
     let mut received = 0u64;
     while received < total_size {
         match inbound.next().await {
@@ -260,14 +300,22 @@ async fn handle_write(
                 // Ignore headers if panel sends them wrapped, but panel actually sends raw bytes for upload stream
                 if !msg.data.is_empty() {
                     if let Err(e) = file.write_all(&msg.data).await {
-                        let _ = tx.send(proto::IoStreamData { data: fm_proto::create_error(&e.to_string()) }).await;
+                        let _ = tx
+                            .send(proto::IoStreamData {
+                                data: fm_proto::create_error(&e.to_string()),
+                            })
+                            .await;
                         return;
                     }
                     received += msg.data.len() as u64;
                 }
             }
             Some(Err(e)) => {
-                let _ = tx.send(proto::IoStreamData { data: fm_proto::create_error(&e.to_string()) }).await;
+                let _ = tx
+                    .send(proto::IoStreamData {
+                        data: fm_proto::create_error(&e.to_string()),
+                    })
+                    .await;
                 return;
             }
             None => break,
@@ -282,20 +330,32 @@ async fn handle_delete(target: &Path, tx: &mpsc::Sender<proto::IoStreamData>) {
     } else {
         fs::remove_file(target).await
     };
-    
+
     if let Err(e) = result {
-        let _ = tx.send(proto::IoStreamData { data: fm_proto::create_error(&e.to_string()) }).await;
+        let _ = tx
+            .send(proto::IoStreamData {
+                data: fm_proto::create_error(&e.to_string()),
+            })
+            .await;
     }
 }
 
 async fn handle_mkdir(target: &Path, tx: &mpsc::Sender<proto::IoStreamData>) {
     if let Err(e) = fs::create_dir_all(target).await {
-        let _ = tx.send(proto::IoStreamData { data: fm_proto::create_error(&e.to_string()) }).await;
+        let _ = tx
+            .send(proto::IoStreamData {
+                data: fm_proto::create_error(&e.to_string()),
+            })
+            .await;
     }
 }
 
 async fn handle_rename(old: &Path, new: &Path, tx: &mpsc::Sender<proto::IoStreamData>) {
     if let Err(e) = fs::rename(old, new).await {
-        let _ = tx.send(proto::IoStreamData { data: fm_proto::create_error(&e.to_string()) }).await;
+        let _ = tx
+            .send(proto::IoStreamData {
+                data: fm_proto::create_error(&e.to_string()),
+            })
+            .await;
     }
 }
