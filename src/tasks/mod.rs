@@ -9,6 +9,7 @@ pub mod terminal;
 
 use crate::config::AgentConfig;
 use crate::proto;
+use crate::client::AuthedClient;
 use tracing::warn;
 
 /// Task type constants matching Go's iota
@@ -28,7 +29,7 @@ pub const TASK_TYPE_APPLY_CONFIG: u64 = 13;
 
 /// Dispatch and execute a task, returning the result (if any)
 #[allow(clippy::field_reassign_with_default)]
-pub async fn do_task(task: &proto::Task, config: &AgentConfig) -> Option<proto::TaskResult> {
+pub async fn do_task(task: &proto::Task, config: &AgentConfig, client: AuthedClient) -> Option<proto::TaskResult> {
     let mut result = proto::TaskResult {
         id: task.id,
         r#type: task.r#type,
@@ -53,7 +54,7 @@ pub async fn do_task(task: &proto::Task, config: &AgentConfig) -> Option<proto::
             result.data = "Rust agent does not support self-update".to_string();
         }
         TASK_TYPE_TERMINAL_GRPC => {
-            terminal::handle(task, config).await;
+            terminal::handle(task, config, client).await;
             return None;
         }
         TASK_TYPE_NAT => {
@@ -61,7 +62,7 @@ pub async fn do_task(task: &proto::Task, config: &AgentConfig) -> Option<proto::
             return None;
         }
         TASK_TYPE_FM => {
-            fm::handle(task, config).await;
+            fm::handle(task, config, client).await;
             return None;
         }
         TASK_TYPE_REPORT_CONFIG => {

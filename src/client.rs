@@ -20,7 +20,7 @@ static PREV_DASHBOARD_BOOT_TIME: AtomicU64 = AtomicU64::new(0);
 static GEOIP_REPORTED: AtomicBool = AtomicBool::new(false);
 
 /// Type alias for our authenticated gRPC client
-type AuthedClient = NezhaServiceClient<InterceptedService<Channel, AuthInterceptor>>;
+pub type AuthedClient = NezhaServiceClient<InterceptedService<Channel, AuthInterceptor>>;
 
 /// Main agent run loop with reconnection logic
 pub async fn run(config: Arc<AgentConfig>) {
@@ -181,8 +181,9 @@ async fn receive_tasks_daemon(
                     Ok(Some(t)) => {
                         let config = config.clone();
                         let tx = task_result_tx.clone();
+                        let task_client = client.clone();
                         tokio::spawn(async move {
-                            if let Some(result) = tasks::do_task(&t, &config).await {
+                            if let Some(result) = tasks::do_task(&t, &config, task_client).await {
                                 if let Err(e) = tx.send(result).await {
                                     error!("send task result failed: {}", e);
                                 }
