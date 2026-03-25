@@ -72,8 +72,8 @@ jobs:
 
       - name: Package
         run: |
-          BINARY="target/${{ matrix.target }}/release/nezha-agent"
-          ARCHIVE="nezha-agent_${{ matrix.name }}.zip"
+          BINARY="target/${{ matrix.target }}/release/rust-agent"
+          ARCHIVE="rust-agent_${{ matrix.name }}.zip"
           chmod +x "$BINARY"
           zip -j "$ARCHIVE" "$BINARY"
           echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
@@ -81,7 +81,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nezha-agent_${{ matrix.name }}
+          name: rust-agent_${{ matrix.name }}
           path: ${{ env.ARCHIVE }}
 
   release:

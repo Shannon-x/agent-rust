@@ -18,7 +18,7 @@ use std::sync::Arc;
 use tracing::info;
 
 #[derive(Parser)]
-#[command(name = "nezha-agent")]
+#[command(name = "rust-agent")]
 #[command(about = "哪吒监控 Agent (Rust 高性能版)", long_about = None)]
 #[command(version)]
 struct Cli {
@@ -104,7 +104,7 @@ fn run_agent(config_path: PathBuf) {
     };
 
     init_logger(agent_config.debug);
-    info!("nezha-agent v{} starting...", monitor::VERSION);
+    info!("rust-agent v{} starting...", monitor::VERSION);
     info!("Config: {:?}", config_path);
 
     let config = Arc::new(agent_config);
@@ -120,7 +120,7 @@ fn run_agent(config_path: PathBuf) {
 }
 
 fn handle_service_command(action: &str, config_path: &Path) {
-    let exe_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("nezha-agent"));
+    let exe_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("rust-agent"));
     let exe_name = exe_path.file_name().unwrap_or_default().to_string_lossy();
     let config_flag = format!("-c {}", config_path.display());
 

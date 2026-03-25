@@ -132,7 +132,10 @@ async fn build_channel(config: &AgentConfig) -> anyhow::Result<Channel> {
 
     let mut endpoint = Endpoint::from_shared(server_addr)?
         .timeout(Duration::from_secs(30))
-        .connect_timeout(Duration::from_secs(10));
+        .connect_timeout(Duration::from_secs(10))
+        .http2_keep_alive_interval(Duration::from_secs(30))
+        .keep_alive_timeout(Duration::from_secs(10))
+        .keep_alive_while_idle(true);
 
     if config.tls {
         let mut tls_config = ClientTlsConfig::new();

@@ -29,6 +29,6 @@ builds:
       - goos: windows
         goarch: arm
     main: ./cmd/agent
-    binary: nezha-agent
+    binary: rust-agent
 snapshot:
-  version_template: "nezha-agent"
+  version_template: "rust-agent"

@@ -1,5 +1,5 @@
 #!/bin/sh
-# 哪吒监控 Agent (Rust) 一键管理脚本
+# Rust Agent 一键管理脚本
 # 安装: curl -sL https://raw.githubusercontent.com/Shannon-x/agent-rust/main/install.sh | sudo sh
 # 指定操作: curl -sL ... | sudo sh -s -- install --server <地址> --secret <密钥>
 
@@ -12,10 +12,10 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-AGENT_NAME="nezha-agent"
-INSTALL_DIR="/opt/nezha-agent"
+AGENT_NAME="rust-agent"
+INSTALL_DIR="/opt/rust-agent"
 CONFIG_FILE="${INSTALL_DIR}/config.yml"
-SERVICE_NAME="nezha-agent"
+SERVICE_NAME="rust-agent"
 REPO="Shannon-x/agent-rust"
 
 log()  { printf "${GREEN}[✓]${NC} %s\n" "$*"; }
@@ -95,7 +95,7 @@ install_service() {
     if command -v systemctl >/dev/null 2>&1; then
         cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<EOF
 [Unit]
-Description=Nezha Agent (Rust)
+Description=Rust Agent
 After=network.target
 Wants=network-online.target
 
@@ -117,7 +117,7 @@ EOF
         cat > "/etc/init.d/${SERVICE_NAME}" <<EOF
 #!/sbin/openrc-run
 name="${SERVICE_NAME}"
-description="Nezha Agent (Rust)"
+description="Rust Agent"
 command="${INSTALL_DIR}/${AGENT_NAME}"
 command_args="-c ${CONFIG_FILE}"
 command_background=true
@@ -195,7 +195,7 @@ do_install() {
     _uuid=$(gen_uuid)
 
     cat > "${CONFIG_FILE}" <<EOF
-# 哪吒监控 Agent 配置 - $(date '+%Y-%m-%d %H:%M:%S')
+# Rust Agent 配置 - $(date '+%Y-%m-%d %H:%M:%S')
 server: "${_server}"
 client_secret: "${_secret}"
 uuid: "${_uuid}"
@@ -276,7 +276,7 @@ do_update() {
 
 # ─── 卸载 ─────────────────────────────────────────────────
 do_uninstall() {
-    printf "${YELLOW}即将卸载 Nezha Agent:${NC}\n"
+    printf "${YELLOW}即将卸载 Rust Agent:${NC}\n"
     printf "  - 停止并删除服务\n"
     printf "  - 删除 %s\n\n" "$INSTALL_DIR"
     ask "$(printf "${RED}确认卸载? [y/N]: ${NC}")"
@@ -318,7 +318,7 @@ show_management_commands() {
 show_menu() {
     printf "\n"
     printf "${CYAN}╔═══════════════════════════════════════════════╗${NC}\n"
-    printf "${CYAN}║   ${BOLD}哪吒监控 Agent (Rust) 管理脚本${NC}${CYAN}              ║${NC}\n"
+    printf "${CYAN}║   ${BOLD}Rust Agent 管理脚本${NC}${CYAN}                        ║${NC}\n"
     printf "${CYAN}╚═══════════════════════════════════════════════╝${NC}\n\n"
 
     if [ -f "${INSTALL_DIR}/${AGENT_NAME}" ]; then
