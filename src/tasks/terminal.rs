@@ -5,7 +5,6 @@ use futures_util::StreamExt;
 use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
 use serde::Deserialize;
 use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tracing::{error, info, warn};
@@ -94,7 +93,7 @@ pub async fn handle(task: &proto::Task, config: &AgentConfig, mut client: Authed
 
     // Split PTY IO into async readers/writers using tokio blocking adapters
     // portable_pty provides std::io traits, we need tokio::io
-    let mut pty_reader = tokio::task::spawn_blocking({
+    let pty_reader = tokio::task::spawn_blocking({
         let pty_reader = pty_pair.master.try_clone_reader().unwrap();
         move || {
             let mut std_reader = pty_reader;
@@ -119,7 +118,9 @@ pub async fn handle(task: &proto::Task, config: &AgentConfig, mut client: Authed
     .await
     .unwrap();
 
-    let mut pty_writer = pty_pair.master.take_writer().unwrap();
+    let pty_writer = std::sync::Arc::new(std::sync::Mutex::new(
+        pty_pair.master.take_writer().unwrap(),
+    ));
 
     let stream_id = terminal.stream_id.clone();
     let tx_clone = tx.clone();
@@ -169,11 +170,11 @@ pub async fn handle(task: &proto::Task, config: &AgentConfig, mut client: Authed
                     // Ignored (heartbeat from panel)
                     continue;
                 }
-                // Write to PTY
                 let data = msg.data;
+                let writer_arc = pty_writer.clone();
                 if let Err(e) = tokio::task::spawn_blocking(move || {
-                    let mut writer = pty_writer;
-                    std::io::Write::write_all(&mut writer, &data)
+                    let mut writer = writer_arc.lock().unwrap();
+                    std::io::Write::write_all(&mut *writer, &data)
                 })
                 .await
                 .unwrap()
