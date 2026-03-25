@@ -19,6 +19,7 @@ struct TaskFm {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 struct FmAction {
     action: String,
     path: Option<String>,
